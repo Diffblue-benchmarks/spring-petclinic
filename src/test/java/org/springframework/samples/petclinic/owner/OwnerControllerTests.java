@@ -13,32 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.samples.petclinic.owner;
 
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
-
+import com.diffblue.cover.annotations.ManagedByDiffblue;
+import com.diffblue.cover.annotations.MethodsUnderTest;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Map;
 import org.assertj.core.util.Lists;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -46,14 +58,23 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.aot.DisabledInAotMode;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.result.StatusResultMatchers;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 
 /**
  * Test class for {@link OwnerController}
  *
  * @author Colin But
  */
+@ContextConfiguration(classes = { OwnerController.class })
+@ExtendWith(SpringExtension.class)
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
@@ -63,6 +84,9 @@ class OwnerControllerTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private OwnerController ownerController;
 
 	@MockBean
 	private OwnerRepository owners;
@@ -84,22 +108,490 @@ class OwnerControllerTests {
 		george.addPet(max);
 		max.setId(1);
 		return george;
-	};
+	}
 
 	@BeforeEach
 	void setup() {
-
 		Owner george = george();
 		given(this.owners.findByLastName(eq("Franklin"), any(Pageable.class)))
 			.willReturn(new PageImpl<Owner>(Lists.newArrayList(george)));
-
 		given(this.owners.findAll(any(Pageable.class))).willReturn(new PageImpl<Owner>(Lists.newArrayList(george)));
-
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(george);
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
+	}
 
+	/**
+	 * Test {@link OwnerController#findOwner(Integer)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link Owner} (default constructor) Address is {@code 42 Main St}.
+	 * <li>When one.
+	 * <li>Then return {@link Owner} (default constructor).
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#findOwner(Integer)}
+	 */
+	@Test
+	@DisplayName("Test findOwner(Integer); given Owner (default constructor) Address is '42 Main St'; when one; then return Owner (default constructor)")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "Owner OwnerController.findOwner(Integer)" })
+	void testFindOwner_givenOwnerAddressIs42MainSt_whenOne_thenReturnOwner() {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+		when(this.owners.findById(Mockito.<Integer>any())).thenReturn(owner);
+
+		// Act
+		Owner actualFindOwnerResult = ownerController.findOwner(1);
+
+		// Assert
+		verify(this.owners).findById(1);
+		assertSame(owner, actualFindOwnerResult);
+	}
+
+	/**
+	 * Test {@link OwnerController#findOwner(Integer)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link OwnerRepository}.
+	 * <li>When {@code null}.
+	 * <li>Then return Id is {@code null}.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#findOwner(Integer)}
+	 */
+	@Test
+	@DisplayName("Test findOwner(Integer); given OwnerRepository; when 'null'; then return Id is 'null'")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "Owner OwnerController.findOwner(Integer)" })
+	void testFindOwner_givenOwnerRepository_whenNull_thenReturnIdIsNull() {
+		// Arrange and Act
+		Owner actualFindOwnerResult = ownerController.findOwner(null);
+
+		// Assert
+		assertNull(actualFindOwnerResult.getId());
+		assertNull(actualFindOwnerResult.getFirstName());
+		assertNull(actualFindOwnerResult.getLastName());
+		assertNull(actualFindOwnerResult.getAddress());
+		assertNull(actualFindOwnerResult.getCity());
+		assertNull(actualFindOwnerResult.getTelephone());
+		assertTrue(actualFindOwnerResult.isNew());
+	}
+
+	/**
+	 * Test {@link OwnerController#initCreationForm(Map)}.
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#initCreationForm(Map)}
+	 */
+	@Test
+	@DisplayName("Test initCreationForm(Map)")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.initCreationForm(Map)" })
+	void testInitCreationForm2() throws Exception {
+		// Arrange
+		MockHttpServletRequestBuilder requestBuilder = get("/owners/new");
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"))
+			.andExpect(forwardedUrl("owners/createOrUpdateOwnerForm"));
+	}
+
+	/**
+	 * Test {@link OwnerController#processCreationForm(Owner, BindingResult)}.
+	 *
+	 * <p>
+	 * Method under test:
+	 * {@link OwnerController#processCreationForm(Owner, BindingResult)}
+	 */
+	@Test
+	@DisplayName("Test processCreationForm(Owner, BindingResult)")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.processCreationForm(Owner, BindingResult)" })
+	void testProcessCreationForm() throws Exception {
+		// Arrange
+		MockHttpServletRequestBuilder requestBuilder = post("/owners/new");
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"))
+			.andExpect(forwardedUrl("owners/createOrUpdateOwnerForm"));
+	}
+
+	/**
+	 * Test {@link OwnerController#initFindForm()}.
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#initFindForm()}
+	 */
+	@Test
+	@DisplayName("Test initFindForm()")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.initFindForm()" })
+	void testInitFindForm2() throws Exception {
+		// Arrange
+		MockHttpServletRequestBuilder requestBuilder = get("/owners/find");
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/findOwners"))
+			.andExpect(forwardedUrl("owners/findOwners"));
+	}
+
+	/**
+	 * Test {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link Owner} (default constructor) Address is {@code 17 High St}.
+	 * <li>Then model size five.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test:
+	 * {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}
+	 */
+	@Test
+	@DisplayName("Test processFindForm(int, Owner, BindingResult, Model); given Owner (default constructor) Address is '17 High St'; then model size five")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.processFindForm(int, Owner, BindingResult, Model)" })
+	void testProcessFindForm_givenOwnerAddressIs17HighSt_thenModelSizeFive() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+
+		Owner owner2 = new Owner();
+		owner2.setAddress("17 High St");
+		owner2.setCity("London");
+		owner2.setFirstName("John");
+		owner2.setId(2);
+		owner2.setLastName("Smith");
+		owner2.setTelephone("8605550118");
+
+		ArrayList<Owner> content = new ArrayList<>();
+		content.add(owner2);
+		content.add(owner);
+		when(this.owners.findByLastName(Mockito.<String>any(), Mockito.<Pageable>any()))
+			.thenReturn(new PageImpl<>(content));
+
+		MockHttpServletRequestBuilder requestBuilder = get("/owners").param("page", String.valueOf(1));
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(5))
+			.andExpect(model().attributeExists("currentPage", "listOwners", "owner", "totalItems", "totalPages"))
+			.andExpect(view().name("owners/ownersList"))
+			.andExpect(forwardedUrl("owners/ownersList"));
+	}
+
+	/**
+	 * Test {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link Owner} (default constructor) Address is {@code 42 Main St}.
+	 * <li>Then status {@link StatusResultMatchers#isFound()}.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test:
+	 * {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}
+	 */
+	@Test
+	@DisplayName("Test processFindForm(int, Owner, BindingResult, Model); given Owner (default constructor) Address is '42 Main St'; then status isFound()")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.processFindForm(int, Owner, BindingResult, Model)" })
+	void testProcessFindForm_givenOwnerAddressIs42MainSt_thenStatusIsFound() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+
+		ArrayList<Owner> content = new ArrayList<>();
+		content.add(owner);
+		when(this.owners.findByLastName(Mockito.<String>any(), Mockito.<Pageable>any()))
+			.thenReturn(new PageImpl<>(content));
+
+		MockHttpServletRequestBuilder requestBuilder = get("/owners").param("page", String.valueOf(1));
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isFound())
+			.andExpect(model().size(0))
+			.andExpect(view().name("redirect:/owners/1"))
+			.andExpect(redirectedUrl("/owners/1"));
+	}
+
+	/**
+   * Test {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}.
+   *
+   * <ul>
+   *   <li>When {@code Doe}.
+   *   <li>Then model size one.
+   * </ul>
+   *
+   * <p>Method under test: {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}
+   */
+  @Test
+  @DisplayName(
+      "Test processFindForm(int, Owner, BindingResult, Model); when 'Doe'; then model size one")
+  @Tag("ContributionFromDiffblue")
+  @ManagedByDiffblue
+  @MethodsUnderTest({"String OwnerController.processFindForm(int, Owner, BindingResult, Model)"})
+  void testProcessFindForm_whenDoe_thenModelSizeOne() throws Exception {
+    // Arrange
+    when(this.owners.findByLastName(Mockito.<String>any(), Mockito.<Pageable>any()))
+        .thenReturn(new PageImpl<>(new ArrayList<>()));
+
+    MockHttpServletRequestBuilder requestBuilder =
+        get("/owners").param("page", String.valueOf(1)).param("lastName", "Doe");
+
+    // Act and Assert
+    MockMvcBuilders.standaloneSetup(ownerController)
+        .build()
+        .perform(requestBuilder)
+        .andExpect(status().isOk())
+        .andExpect(model().size(1))
+        .andExpect(model().attributeExists("owner"))
+        .andExpect(view().name("owners/findOwners"))
+        .andExpect(forwardedUrl("owners/findOwners"));
+  }
+
+	/**
+   * Test {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}.
+   *
+   * <ul>
+   *   <li>When {@link MockHttpServletRequestBuilder#param(String, String[])} {@code page} is
+   *       valueOf one.
+   *   <li>Then model size one.
+   * </ul>
+   *
+   * <p>Method under test: {@link OwnerController#processFindForm(int, Owner, BindingResult, Model)}
+   */
+  @Test
+  @DisplayName(
+      "Test processFindForm(int, Owner, BindingResult, Model); when param(String, String[]) 'page' is valueOf one; then model size one")
+  @Tag("ContributionFromDiffblue")
+  @ManagedByDiffblue
+  @MethodsUnderTest({"String OwnerController.processFindForm(int, Owner, BindingResult, Model)"})
+  void testProcessFindForm_whenParamPageIsValueOfOne_thenModelSizeOne() throws Exception {
+    // Arrange
+    when(this.owners.findByLastName(Mockito.<String>any(), Mockito.<Pageable>any()))
+        .thenReturn(new PageImpl<>(new ArrayList<>()));
+
+    MockHttpServletRequestBuilder requestBuilder = get("/owners").param("page", String.valueOf(1));
+
+    // Act and Assert
+    MockMvcBuilders.standaloneSetup(ownerController)
+        .build()
+        .perform(requestBuilder)
+        .andExpect(status().isOk())
+        .andExpect(model().size(1))
+        .andExpect(model().attributeExists("owner"))
+        .andExpect(view().name("owners/findOwners"))
+        .andExpect(forwardedUrl("owners/findOwners"));
+  }
+
+	/**
+	 * Test {@link OwnerController#initUpdateOwnerForm(int, Model)}.
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#initUpdateOwnerForm(int, Model)}
+	 */
+	@Test
+	@DisplayName("Test initUpdateOwnerForm(int, Model)")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.initUpdateOwnerForm(int, Model)" })
+	void testInitUpdateOwnerForm2() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+		when(this.owners.findById(Mockito.<Integer>any())).thenReturn(owner);
+
+		MockHttpServletRequestBuilder requestBuilder = get("/owners/{ownerId}/edit", 1);
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"))
+			.andExpect(forwardedUrl("owners/createOrUpdateOwnerForm"));
+	}
+
+	/**
+	 * Test {@link OwnerController#processUpdateOwnerForm(Owner, BindingResult, int)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link Owner} (default constructor) Address is {@code 42 Main St}.
+	 * <li>Then status {@link StatusResultMatchers#isFound()}.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test:
+	 * {@link OwnerController#processUpdateOwnerForm(Owner, BindingResult, int)}
+	 */
+	@Test
+	@DisplayName("Test processUpdateOwnerForm(Owner, BindingResult, int); given Owner (default constructor) Address is '42 Main St'; then status isFound()")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.processUpdateOwnerForm(Owner, BindingResult, int)" })
+	void testProcessUpdateOwnerForm_givenOwnerAddressIs42MainSt_thenStatusIsFound() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+		doNothing().when(this.owners).save(Mockito.<Owner>any());
+		when(this.owners.findById(Mockito.<Integer>any())).thenReturn(owner);
+
+		MockHttpServletRequestBuilder requestBuilder = post("/owners/{ownerId}/edit", 1);
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isFound())
+			.andExpect(model().size(0))
+			.andExpect(view().name("redirect:/owners/{ownerId}"))
+			.andExpect(redirectedUrl("/owners/1"));
+	}
+
+	/**
+	 * Test {@link OwnerController#processUpdateOwnerForm(Owner, BindingResult, int)}.
+	 *
+	 * <ul>
+	 * <li>Given {@link Owner} (default constructor) Address is empty string.
+	 * <li>Then status {@link StatusResultMatchers#isOk()}.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test:
+	 * {@link OwnerController#processUpdateOwnerForm(Owner, BindingResult, int)}
+	 */
+	@Test
+	@DisplayName("Test processUpdateOwnerForm(Owner, BindingResult, int); given Owner (default constructor) Address is empty string; then status isOk()")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "String OwnerController.processUpdateOwnerForm(Owner, BindingResult, int)" })
+	void testProcessUpdateOwnerForm_givenOwnerAddressIsEmptyString_thenStatusIsOk() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+		doNothing().when(this.owners).save(Mockito.<Owner>any());
+		when(this.owners.findById(Mockito.<Integer>any())).thenReturn(owner);
+
+		MockHttpServletRequestBuilder requestBuilder = post("/owners/{ownerId}/edit", 1);
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/createOrUpdateOwnerForm"))
+			.andExpect(forwardedUrl("owners/createOrUpdateOwnerForm"));
+	}
+
+	/**
+	 * Test {@link OwnerController#showOwner(int)}.
+	 *
+	 * <ul>
+	 * <li>When one.
+	 * <li>Then view name {@code owners/ownerDetails}.
+	 * </ul>
+	 *
+	 * <p>
+	 * Method under test: {@link OwnerController#showOwner(int)}
+	 */
+	@Test
+	@DisplayName("Test showOwner(int); when one; then view name 'owners/ownerDetails'")
+	@Tag("ContributionFromDiffblue")
+	@ManagedByDiffblue
+	@MethodsUnderTest({ "org.springframework.web.servlet.ModelAndView OwnerController.showOwner(int)" })
+	void testShowOwner_whenOne_thenViewNameOwnersOwnerDetails() throws Exception {
+		// Arrange
+		Owner owner = new Owner();
+		owner.setAddress("42 Main St");
+		owner.setCity("Oxford");
+		owner.setFirstName("Jane");
+		owner.setId(1);
+		owner.setLastName("Doe");
+		owner.setTelephone("6625550144");
+		when(this.owners.findById(Mockito.<Integer>any())).thenReturn(owner);
+
+		MockHttpServletRequestBuilder requestBuilder = get("/owners/{ownerId}", 1);
+
+		// Act and Assert
+		MockMvcBuilders.standaloneSetup(ownerController)
+			.build()
+			.perform(requestBuilder)
+			.andExpect(status().isOk())
+			.andExpect(model().size(1))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(forwardedUrl("owners/ownerDetails"));
 	}
 
 	@Test
@@ -165,7 +657,6 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrors("owner", "lastName"))
 			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "notFound"))
 			.andExpect(view().name("owners/findOwners"));
-
 	}
 
 	@Test
@@ -225,7 +716,6 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner", hasProperty("pets", new BaseMatcher<List<Pet>>() {
-
 				@Override
 				public boolean matches(Object item) {
 					@SuppressWarnings("unchecked")
